@@ -1,0 +1,28 @@
+services:
+  backend:
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+    ports: !reset []
+
+  worker:
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+
+  frontend:
+    ports:
+      - "${UI_PORT:-3000}:8080"
+
+  postgres:
+    restart: always
+
+  redis:
+    restart: always
+
+  dtrack-postgres:
+    restart: always
+
+  dependency-track-api:
+    restart: always
+    ports: !reset []
