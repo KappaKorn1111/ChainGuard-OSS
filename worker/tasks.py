@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 import subprocess
 import tempfile
 from datetime import UTC, datetime
@@ -65,8 +66,9 @@ def run_tool(command: list[str], output_path: Path | None = None) -> str:
 
 def tool_version(name: str) -> str:
     try:
+        command = [name, "--version"] if name == "sbom-convert" else [name, "version"]
         completed = subprocess.run(
-            [name, "version"],
+            command,
             capture_output=True,
             text=True,
             timeout=10,
@@ -139,7 +141,7 @@ def vulnerabilities_from_grype(report: dict[str, Any]) -> list[dict[str, Any]]:
     return findings
 
 
-def submit_dependency_track(sbom_path: Path, job_id: str) -> str | None:
+def submit_dependency_track(cyclonedx_path: Path, job_id: str) -> str | None:
     if not settings.dependency_track_enabled:
         return None
     assert settings.dependency_track_url and settings.dependency_track_api_key
@@ -147,7 +149,7 @@ def submit_dependency_track(sbom_path: Path, job_id: str) -> str | None:
     headers = {"X-Api-Key": settings.dependency_track_api_key}
     project_name = f"{settings.dependency_track_project_name}:{job_id}"
     with httpx.Client(base_url=base_url, headers=headers, timeout=60) as client:
-        with sbom_path.open("rb") as bom:
+        with cyclonedx_path.open("rb") as bom:
             response = client.post(
                 "/api/v1/bom",
                 data={
@@ -155,7 +157,13 @@ def submit_dependency_track(sbom_path: Path, job_id: str) -> str | None:
                     "projectName": project_name,
                     "projectVersion": settings.dependency_track_project_version,
                 },
-                files={"bom": ("sbom.spdx.json", bom, "application/json")},
+                files={
+                    "bom": (
+                        "sbom.cdx.json",
+                        bom,
+                        "application/vnd.cyclonedx+json",
+                    )
+                },
             )
         response.raise_for_status()
         lookup = client.get(
@@ -210,7 +218,7 @@ def inspect_job(self, job_id: str) -> None:
                 raw_sbom = json.loads(raw_path.read_text())
                 normalized_sbom = json.loads(normalized_path.read_text())
                 grype_report = json.loads(grype_path.read_text())
-                project_uuid = submit_dependency_track(normalized_path, job_id)
+                project_uuid = submit_dependency_track(raw_path, job_id)
                 provenance = {
                     "job_id": job_id,
                     "source_type": job.source_type.value,
@@ -225,6 +233,9 @@ def inspect_job(self, job_id: str) -> None:
                         "syft": tool_version("syft"),
                         "grype": tool_version("grype"),
                         "sbom-convert": tool_version("sbom-convert"),
+                    },
+                    "configured_versions": {
+                        "sbom-convert": os.getenv("SBOM_CONVERT_VERSION", "UNVERIFIED")
                     },
                     "completed_at": datetime.now(UTC).isoformat(),
                 }

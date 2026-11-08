@@ -15,7 +15,7 @@ x-app-environment: &app-environment
 
 services:
   postgres:
-    image: postgres:17.6-bookworm
+    image: postgres:17.11-bookworm
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
@@ -35,7 +35,7 @@ services:
           memory: 1G
 
   redis:
-    image: redis:8.2.2-alpine
+    image: redis:8.10.1-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
     volumes:
       - redis-data:/data
@@ -132,7 +132,7 @@ services:
           memory: 128M
 
   dtrack-postgres:
-    image: postgres:17.6-bookworm
+    image: postgres:17.11-bookworm
     environment:
       POSTGRES_USER: ${DTRACK_POSTGRES_USER:?set DTRACK_POSTGRES_USER}
       POSTGRES_PASSWORD: ${DTRACK_POSTGRES_PASSWORD:?set DTRACK_POSTGRES_PASSWORD}
@@ -152,22 +152,20 @@ services:
           memory: 1G
 
   dependency-track-api:
-    image: dependencytrack/apiserver:4.13.6
+    image: ghcr.io/dependencytrack/apiserver:5.2.1
     environment:
-      ALPINE_DATABASE_MODE: external
-      ALPINE_DATABASE_URL: jdbc:postgresql://dtrack-postgres:5432/${DTRACK_POSTGRES_DB:?set DTRACK_POSTGRES_DB}
-      ALPINE_DATABASE_DRIVER: org.postgresql.Driver
-      ALPINE_DATABASE_USERNAME: ${DTRACK_POSTGRES_USER:?set DTRACK_POSTGRES_USER}
-      ALPINE_DATABASE_PASSWORD: ${DTRACK_POSTGRES_PASSWORD:?set DTRACK_POSTGRES_PASSWORD}
-      ALPINE_CORS_ENABLED: "true"
-      ALPINE_CORS_ALLOW_ORIGIN: ${DTRACK_CORS_ORIGIN:-http://localhost:8081}
-      JAVA_OPTIONS: -Xms1g -Xmx4g
+      DT_DATASOURCE_URL: jdbc:postgresql://dtrack-postgres:5432/${DTRACK_POSTGRES_DB:?set DTRACK_POSTGRES_DB}
+      DT_DATASOURCE_USERNAME: ${DTRACK_POSTGRES_USER:?set DTRACK_POSTGRES_USER}
+      DT_DATASOURCE_PASSWORD: ${DTRACK_POSTGRES_PASSWORD:?set DTRACK_POSTGRES_PASSWORD}
+      DT_CORS_ENABLED: "true"
+      DT_CORS_ALLOWED_ORIGINS: ${DTRACK_CORS_ORIGIN:-http://localhost:8081}
     volumes:
       - dtrack-data:/data
     ports:
       - "${DTRACK_API_PORT:-8082}:8080"
+      - "127.0.0.1:${DTRACK_MANAGEMENT_PORT:-9001}:9000"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/health"]
       interval: 15s
       timeout: 5s
       retries: 40
@@ -180,10 +178,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 5G
+          memory: 2G
 
   dependency-track-frontend:
-    image: dependencytrack/frontend:4.13.6
+    image: ghcr.io/dependencytrack/frontend:5.2.1
     environment:
       API_BASE_URL: ${DTRACK_PUBLIC_API_URL:-http://localhost:8082}
     ports:

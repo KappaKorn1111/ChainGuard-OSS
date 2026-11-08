@@ -1,0 +1,1044 @@
+schema_version: "1.0"
+generated_at: 2026-11-08
+verification_policy: >-
+  Version and license data must be traceable to official upstream repositories,
+  release pages, or documentation. UNVERIFIED values cannot be enabled.
+priority_mapping:
+  CORE: Required by the current inspection lifecycle.
+  SECONDARY: Next complementary integration with a bounded adapter.
+  OPTIONAL: Deployment-specific extension, disabled by default.
+  FUTURE: Reserved architecture requiring a later implementation decision.
+
+tools:
+  - id: syft
+    name: Syft
+    category: sbom-generator
+    official_source: https://github.com/anchore/syft
+    documentation: https://oss.anchore.com/docs/guides/sbom/
+    verified_version: v1.57.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/anchore/syft/blob/v1.57.0/LICENSE
+    installation:
+      method: container-stage
+      locator: anchore/syft:v1.57.0
+      pinned: true
+    capabilities: [component-discovery, sbom-generation, image-cataloging, filesystem-cataloging]
+    responsibility: Discover packages and relationships and emit an SBOM.
+    boundary: Does not provide vulnerability verdicts, signatures, or policy decisions.
+    dependencies: [registry-or-filesystem-access]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [OCI-image, docker-archive, OCI-archive, directory, file]
+      output_formats: [syft-json, CycloneDX-JSON, CycloneDX-XML, SPDX-JSON, SPDX-tag-value]
+    interfaces: [CLI, Go-library]
+    configuration:
+      required: [scan-source]
+      authentication: Registry credentials are source-specific and optional.
+      secrets: [registry-credentials]
+    priority: CORE
+    tags: [prompt-01]
+    enablement:
+      status: enabled
+      current_integration: worker/Dockerfile and worker/tasks.py
+      rationale: Primary Prompt 01 SBOM generator.
+    health_check:
+      required: true
+      method: CLI
+      target: syft version
+    security_considerations:
+      - Treat scanned content and registry metadata as untrusted.
+      - Bound network access, execution time, memory, and output size.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/anchore/syft/releases/tag/v1.57.0
+    sources:
+      - https://github.com/anchore/syft/releases/tag/v1.57.0
+      - https://github.com/anchore/syft/blob/v1.57.0/README.md
+
+  - id: grype
+    name: Grype
+    category: vulnerability-intelligence-provider
+    official_source: https://github.com/anchore/grype
+    documentation: https://oss.anchore.com/docs/guides/vulnerability/
+    verified_version: v0.121.2
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/anchore/grype/blob/v0.121.2/LICENSE
+    installation:
+      method: container-stage
+      locator: anchore/grype:v0.121.2
+      pinned: true
+    capabilities: [vulnerability-correlation, vulnerability-db-updates, SBOM-scanning]
+    responsibility: Correlate discovered packages with Grype vulnerability data and match rules.
+    boundary: Does not own SBOM generation, signature verification, or repository assessment.
+    dependencies: [vulnerability-database, supported-SBOM]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [Syft-JSON, CycloneDX-JSON, SPDX-JSON, OCI-image, directory]
+      output_formats: [grype-JSON, table, CycloneDX-JSON, SARIF]
+    interfaces: [CLI, Go-library]
+    configuration:
+      required: [vulnerability-database-cache]
+      authentication: Registry authentication is source-specific; DB download is normally public.
+      secrets: [registry-credentials]
+    priority: CORE
+    tags: [prompt-01]
+    enablement:
+      status: enabled
+      current_integration: worker/Dockerfile and worker/tasks.py
+      rationale: Primary Prompt 01 vulnerability engine.
+    health_check:
+      required: true
+      method: CLI
+      target: grype version
+    security_considerations:
+      - Record vulnerability DB state because findings change as intelligence updates.
+      - Preserve match details and advisory source URLs.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/anchore/grype/releases/tag/v0.121.2
+    sources:
+      - https://github.com/anchore/grype/releases/tag/v0.121.2
+      - https://github.com/anchore/grype/blob/v0.121.2/README.md
+
+  - id: protobom
+    name: Protobom via sbom-convert
+    category: sbom-normalizer
+    official_source: https://github.com/protobom/sbom-convert
+    documentation: https://github.com/protobom/protobom
+    verified_version: v0.0.8
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/protobom/sbom-convert/blob/v0.0.8/LICENSE
+    installation:
+      method: go-install
+      locator: github.com/protobom/sbom-convert@v0.0.8
+      pinned: true
+    capabilities: [sbom-ingestion, sbom-normalization, sbom-format-conversion]
+    responsibility: Parse supported SPDX/CycloneDX documents through the Protobom model and serialize a requested format.
+    boundary: Does not discover components or determine vulnerability status.
+    dependencies: [Go-1.26-build-stage, Protobom-library-v0.6.1]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [SPDX-JSON, CycloneDX-JSON]
+      output_formats: [SPDX-2.2-JSON, SPDX-2.3-JSON, SPDX-3.0.1-JSON, CycloneDX-JSON]
+    interfaces: [CLI, Go-library]
+    configuration:
+      required: [input-document, output-format]
+      authentication: None.
+      secrets: []
+    priority: CORE
+    tags: [prompt-01, openssf]
+    enablement:
+      status: enabled
+      current_integration: worker/Dockerfile and worker/tasks.py
+      rationale: Prompt 01 canonical CycloneDX-to-SPDX normalization path.
+    health_check:
+      required: true
+      method: CLI
+      target: sbom-convert --help
+    security_considerations:
+      - Format conversion may be lossy; retain the source SBOM.
+      - Validate parser limits for untrusted documents.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/protobom/sbom-convert/releases/tag/v0.0.8
+    sources:
+      - https://github.com/protobom/sbom-convert/releases/tag/v0.0.8
+      - https://github.com/protobom/protobom/releases/tag/v0.7.0
+
+  - id: dependency-track
+    name: OWASP Dependency-Track
+    category: external-monitoring
+    official_source: https://github.com/DependencyTrack/dependency-track
+    documentation: https://docs.dependencytrack.org/
+    verified_version: 5.2.1
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/DependencyTrack/dependency-track/blob/5.2.1/LICENSE.txt
+    installation:
+      method: docker-compose
+      locator: ghcr.io/dependencytrack/apiserver:5.2.1 and ghcr.io/dependencytrack/frontend:5.2.1
+      pinned: true
+    capabilities: [BOM-ingestion, portfolio-analysis, continuous-component-analysis, policy-evaluation]
+    responsibility: Continuously analyze uploaded component inventories and portfolio risk.
+    boundary: Does not replace ChainGuard job state, native evidence, or scanner orchestration.
+    dependencies: [PostgreSQL, file-storage, Java-runtime-in-image]
+    supported:
+      operating_systems: [OCI-container-runtime]
+      architectures: [UNVERIFIED]
+      input_formats: [CycloneDX-JSON, CycloneDX-XML, CycloneDX-VEX]
+      output_formats: [REST-JSON, CycloneDX, notifications]
+    interfaces: [REST-API, web-UI]
+    configuration:
+      required: [database-URL, database-credentials, file-storage]
+      authentication: API key for BOM upload; interactive credentials for UI.
+      secrets: [database-password, Dependency-Track-API-key]
+    priority: CORE
+    tags: [prompt-01, owasp]
+    enablement:
+      status: enabled
+      current_integration: compose.yaml and worker/tasks.py
+      rationale: Real downstream continuous analysis service; synchronization is conditional on an API key.
+    health_check:
+      required: true
+      method: HTTP
+      target: http://127.0.0.1:9000/health
+    security_considerations:
+      - Protect the API/UI with TLS, strong administrator credentials, and least-privilege API keys.
+      - Isolate its database and preserve local results when synchronization fails.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/DependencyTrack/dependency-track/releases/tag/5.2.1
+    sources:
+      - https://github.com/DependencyTrack/dependency-track/releases/tag/5.2.1
+      - https://docs.dependencytrack.org/getting-started/deploy-docker/
+
+  - id: trivy
+    name: Trivy
+    category: multi-capability-scanner
+    official_source: https://github.com/aquasecurity/trivy
+    documentation: https://trivy.dev/docs/
+    verified_version: v0.76.2
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/aquasecurity/trivy/blob/v0.76.2/LICENSE
+    installation:
+      method: container-image
+      locator: aquasec/trivy:0.76.2
+      pinned: true
+    capabilities: [vulnerability-scanning, misconfiguration-scanning, secret-scanning, SBOM-generation]
+    responsibility: Provide explicitly selected container, filesystem, repository, or configuration checks.
+    boundary: Each capability is a separate adapter mode; Trivy does not silently replace Syft or Grype.
+    dependencies: [vulnerability-database, policy-bundle]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [OCI-image, filesystem, repository, Kubernetes, SBOM]
+      output_formats: [JSON, SARIF, CycloneDX, SPDX, table]
+    interfaces: [CLI, client-server]
+    configuration:
+      required: [adapter-mode]
+      authentication: Registry and remote-server credentials are deployment-specific.
+      secrets: [registry-credentials]
+    priority: SECONDARY
+    tags: []
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Adds configuration and independent vulnerability coverage after adapter contracts exist.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Select scanner classes explicitly to prevent duplicate or surprising findings.
+      - Cache databases with controlled update and provenance policy.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/aquasecurity/trivy/releases/tag/v0.76.2
+    sources:
+      - https://github.com/aquasecurity/trivy/releases/tag/v0.76.2
+      - https://trivy.dev/docs/latest/guide/
+
+  - id: osv-scanner
+    name: OSV-Scanner
+    category: vulnerability-intelligence-provider
+    official_source: https://github.com/google/osv-scanner
+    documentation: https://google.github.io/osv-scanner/
+    verified_version: v2.7.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/google/osv-scanner/blob/v2.7.0/LICENSE
+    installation:
+      method: go-install
+      locator: github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.0
+      pinned: true
+    capabilities: [lockfile-scanning, source-scanning, SBOM-scanning, OSV-correlation]
+    responsibility: Correlate ecosystem package versions with OSV advisories.
+    boundary: Does not perform container configuration scanning or signature verification.
+    dependencies: [OSV-database-or-API]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [lockfiles, source-tree, CycloneDX-SBOM, SPDX-SBOM]
+      output_formats: [JSON, SARIF, table]
+    interfaces: [CLI]
+    configuration:
+      required: [scan-source]
+      authentication: Public OSV access normally requires no credential.
+      secrets: []
+    priority: SECONDARY
+    tags: []
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Adds ecosystem-native advisory coverage without replacing Grype.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Preserve OSV IDs, aliases, affected ranges, and database timestamp.
+      - Keep findings separately attributed from Grype.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/google/osv-scanner/releases/tag/v2.7.0
+    sources:
+      - https://github.com/google/osv-scanner/releases/tag/v2.7.0
+      - https://google.github.io/osv-scanner/usage/
+
+  - id: cyclonedx-cli
+    name: CycloneDX CLI
+    category: sbom-validator-normalizer
+    official_source: https://github.com/CycloneDX/cyclonedx-cli
+    documentation: https://github.com/CycloneDX/cyclonedx-cli
+    verified_version: v0.33.1
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/CycloneDX/cyclonedx-cli/blob/v0.33.1/LICENSE
+    installation:
+      method: container-image
+      locator: cyclonedx/cyclonedx-cli:0.33.1
+      pinned: true
+    capabilities: [CycloneDX-validation, CycloneDX-conversion, SBOM-merge, SBOM-signing]
+    responsibility: Validate and perform supported operations on CycloneDX documents.
+    boundary: Does not discover dependencies or provide vulnerability intelligence.
+    dependencies: [.NET-runtime-in-image]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [CycloneDX-JSON, CycloneDX-XML, SPDX-JSON]
+      output_formats: [CycloneDX-JSON, CycloneDX-XML]
+    interfaces: [CLI]
+    configuration:
+      required: [operation, input-document]
+      authentication: None for local operations.
+      secrets: [signing-key-when-signing]
+    priority: SECONDARY
+    tags: [cyclonedx]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Adds schema validation without changing the Protobom canonical path.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Signing keys require an external secret-management design.
+      - Validation success must be recorded separately from conversion success.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/CycloneDX/cyclonedx-cli/releases/tag/v0.33.1
+    sources:
+      - https://github.com/CycloneDX/cyclonedx-cli/releases/tag/v0.33.1
+      - https://github.com/CycloneDX/cyclonedx-cli/blob/v0.33.1/README.md
+
+  - id: cdxgen
+    name: cdxgen
+    category: sbom-generator
+    official_source: https://github.com/cdxgen/cdxgen
+    documentation: https://cyclonedx.github.io/cdxgen/
+    verified_version: v13.7.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/cdxgen/cdxgen/blob/v13.7.0/LICENSE
+    installation:
+      method: npm
+      locator: "@cdxgen/cdxgen@13.7.0"
+      pinned: true
+    capabilities: [source-SBOM-generation, container-SBOM-generation, CycloneDX-generation]
+    responsibility: Generate CycloneDX SBOMs with broad language/ecosystem analyzers.
+    boundary: Alternate generator; not part of the default Syft path and not a vulnerability authority.
+    dependencies: [Node.js-24-or-newer, ecosystem-specific-tooling]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [runtime-supported]
+      input_formats: [source-tree, container-image]
+      output_formats: [CycloneDX-JSON, CycloneDX-XML]
+    interfaces: [CLI, Node.js-library, server-mode]
+    configuration:
+      required: [scan-source]
+      authentication: Registry/container authentication is source-specific.
+      secrets: [registry-credentials]
+    priority: OPTIONAL
+    tags: [cyclonedx]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Useful for ecosystem depth, but default execution would overlap Syft.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Some analyzers invoke ecosystem tools; isolate untrusted source scans.
+      - Record analyzer options and all external tool versions.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/cdxgen/cdxgen/releases/tag/v13.7.0
+    sources:
+      - https://github.com/cdxgen/cdxgen/releases/tag/v13.7.0
+      - https://github.com/cdxgen/cdxgen/blob/v13.7.0/README.md
+
+  - id: bomctl
+    name: bomctl
+    category: sbom-normalizer-store-client
+    official_source: https://github.com/bomctl/bomctl
+    documentation: https://github.com/bomctl/bomctl
+    verified_version: v0.4.3
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/bomctl/bomctl/blob/v0.4.3/LICENSE
+    installation:
+      method: release-binary
+      locator: https://github.com/bomctl/bomctl/releases/tag/v0.4.3
+      pinned: true
+    capabilities: [SBOM-import, SBOM-export, SBOM-merge, remote-SBOM-storage]
+    responsibility: Manipulate and exchange supported SBOM formats through a format-neutral workflow.
+    boundary: Does not discover software or issue vulnerability verdicts.
+    dependencies: [configured-SBOM-backend-when-remote]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [CycloneDX, SPDX]
+      output_formats: [CycloneDX, SPDX]
+    interfaces: [CLI]
+    configuration:
+      required: [operation]
+      authentication: Backend-specific when a remote store is configured.
+      secrets: [remote-backend-credentials]
+    priority: FUTURE
+    tags: [advanced, protobom]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Experimental and inactive relative to alternatives; overlaps current Protobom conversion.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Remote backends require scoped credentials and TLS.
+      - Preserve original documents when merging or converting.
+    maintenance:
+      status: stable
+      release_evidence: https://github.com/bomctl/bomctl/releases/tag/v0.4.3
+    sources:
+      - https://github.com/bomctl/bomctl/releases/tag/v0.4.3
+      - https://github.com/bomctl/bomctl/blob/v0.4.3/README.md
+
+  - id: dependency-check
+    name: OWASP Dependency-Check
+    category: vulnerability-intelligence-provider
+    official_source: https://github.com/dependency-check/DependencyCheck
+    documentation: https://jeremylong.github.io/DependencyCheck/
+    verified_version: v13.0.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/dependency-check/DependencyCheck/blob/v13.0.0/LICENSE.txt
+    installation:
+      method: container-image
+      locator: owasp/dependency-check:13.0.0
+      pinned: true
+    capabilities: [dependency-analysis, CPE-correlation, NVD-analysis, report-generation]
+    responsibility: Identify known vulnerable project dependencies with its analyzer/NVD model.
+    boundary: Does not replace container scanning, repository scoring, or artifact verification.
+    dependencies: [Java-runtime, vulnerability-data-feeds]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [runtime-supported]
+      input_formats: [project-files, package-metadata]
+      output_formats: [HTML, XML, CSV, JSON, SARIF, JUnit]
+    interfaces: [CLI, Maven-plugin, Gradle-plugin, Ant-task]
+    configuration:
+      required: [scan-path, data-directory]
+      authentication: NVD API key is strongly recommended for feed access.
+      secrets: [NVD-API-key]
+    priority: OPTIONAL
+    tags: [owasp]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Valuable for selected ecosystems but overlaps vulnerability correlation.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Protect NVD API keys and record feed update timestamps.
+      - CPE matching can produce false positives and requires engine attribution.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/dependency-check/DependencyCheck/releases/tag/v13.0.0
+    sources:
+      - https://github.com/dependency-check/DependencyCheck/releases/tag/v13.0.0
+      - https://jeremylong.github.io/DependencyCheck/dependency-check-cli/
+
+  - id: guac
+    name: GUAC
+    category: supply-chain-graph-provider
+    official_source: https://github.com/guacsec/guac
+    documentation: https://docs.guac.sh/
+    verified_version: v1.1.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/guacsec/guac/blob/v1.1.0/LICENSE
+    installation:
+      method: container-images
+      locator: ghcr.io/guacsec/guac:v1.1.0
+      pinned: true
+    capabilities: [evidence-ingestion, supply-chain-graph, GraphQL-query, document-collectors]
+    responsibility: Ingest and connect software supply-chain metadata in a queryable graph.
+    boundary: Does not replace scanners or ChainGuard evidence/job persistence.
+    dependencies: [graph-backend, collector-and-ingestor-services]
+    supported:
+      operating_systems: [OCI-container-runtime]
+      architectures: [amd64, arm64]
+      input_formats: [CycloneDX, SPDX, SLSA, in-toto, vulnerability-documents]
+      output_formats: [GraphQL-JSON]
+    interfaces: [GraphQL-API, CLI, collectors]
+    configuration:
+      required: [graph-backend, ingestion-policy]
+      authentication: Deployment-specific; production access control must be designed.
+      secrets: [collector-source-credentials]
+    priority: FUTURE
+    tags: [advanced, openssf]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Requires graph identity, lifecycle, authorization, and retention architecture.
+    health_check:
+      required: false
+      method: service
+    security_considerations:
+      - Graph APIs can expose sensitive dependency and provenance relationships.
+      - Collectors require source-specific least-privilege credentials.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/guacsec/guac/releases/tag/v1.1.0
+    sources:
+      - https://github.com/guacsec/guac/releases/tag/v1.1.0
+      - https://docs.guac.sh/guac/setup-install/
+
+  - id: openssf-scorecard
+    name: OpenSSF Scorecard
+    category: repository-assessment-provider
+    official_source: https://github.com/ossf/scorecard
+    documentation: https://scorecard.dev/
+    verified_version: v5.6.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/ossf/scorecard/blob/v5.6.0/LICENSE
+    installation:
+      method: release-binary
+      locator: https://github.com/ossf/scorecard/releases/tag/v5.6.0
+      pinned: true
+    capabilities: [repository-practice-assessment, scorecard-checks, SARIF-export]
+    responsibility: Assess source repository security practices using named Scorecard checks.
+    boundary: Scores repository practices; does not report artifact CVEs or verify signatures.
+    dependencies: [source-host-API]
+    supported:
+      operating_systems: [Linux, macOS]
+      architectures: [amd64, arm64]
+      input_formats: [repository-URL]
+      output_formats: [JSON, SARIF, human-readable]
+    interfaces: [CLI, GitHub-Action]
+    configuration:
+      required: [repository]
+      authentication: Source-host token for reliable API access and private repositories.
+      secrets: [source-host-token]
+    priority: OPTIONAL
+    tags: [advanced, openssf]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Adds distinct repository posture signals after repository identity support.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Scope source-host tokens read-only.
+      - Keep individual checks and reasons; do not reduce to a vulnerability count.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/ossf/scorecard/releases/tag/v5.6.0
+    sources:
+      - https://github.com/ossf/scorecard/releases/tag/v5.6.0
+      - https://github.com/ossf/scorecard/blob/v5.6.0/docs/checks.md
+
+  - id: defectdojo
+    name: OWASP DefectDojo
+    category: external-findings-processor
+    official_source: https://github.com/DefectDojo/django-DefectDojo
+    documentation: https://docs.defectdojo.com/
+    verified_version: 3.5.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: BSD 3-Clause License
+      spdx: BSD-3-Clause
+      source: https://github.com/DefectDojo/django-DefectDojo/blob/3.5.0/LICENSE.md
+    installation:
+      method: upstream-docker-compose
+      locator: https://github.com/DefectDojo/django-DefectDojo/releases/tag/3.5.0
+      pinned: true
+    capabilities: [finding-import, deduplication, triage-workflows, REST-integration]
+    responsibility: Aggregate and manage findings in an external vulnerability-management workflow.
+    boundary: Does not own ChainGuard scan execution, evidence, or source-of-truth job state.
+    dependencies: [database, cache, background-workers]
+    supported:
+      operating_systems: [OCI-container-runtime]
+      architectures: [UNVERIFIED]
+      input_formats: [supported-scanner-reports, REST-JSON]
+      output_formats: [REST-JSON, reports]
+    interfaces: [REST-API, web-UI]
+    configuration:
+      required: [external-deployment, product-and-engagement-mapping]
+      authentication: API token or configured identity provider.
+      secrets: [DefectDojo-API-token, database-credentials]
+    priority: FUTURE
+    tags: [advanced, owasp]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Significant duplicate infrastructure; integrate only as an external endpoint.
+    health_check:
+      required: false
+      method: HTTP
+    security_considerations:
+      - Finding data is sensitive and API tokens need narrow scope.
+      - Deduplication must retain ChainGuard evidence references and engine attribution.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/DefectDojo/django-DefectDojo/releases/tag/3.5.0
+    sources:
+      - https://github.com/DefectDojo/django-DefectDojo/releases/tag/3.5.0
+      - https://docs.defectdojo.com/supported_tools/parsers/
+
+  - id: sigstore
+    name: Sigstore
+    category: trust-system
+    official_source: https://github.com/sigstore/sigstore
+    documentation: https://docs.sigstore.dev/
+    verified_version: v1.11.3
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/sigstore/sigstore/blob/v1.11.3/LICENSE
+    installation:
+      method: ecosystem-reference
+      locator: https://www.sigstore.dev/
+      pinned: false
+    capabilities: [keyless-signing-ecosystem, transparency-log, certificate-authority, timestamping]
+    responsibility: Define the trust services and formats used by concrete Sigstore clients.
+    boundary: Umbrella ecosystem, not a generic scanner or a single ChainGuard executable.
+    dependencies: [Fulcio, Rekor, trusted-root, client]
+    supported:
+      operating_systems: [service-and-client-dependent]
+      architectures: [service-and-client-dependent]
+      input_formats: [Sigstore-bundles, signatures, attestations]
+      output_formats: [verification-material, transparency-records]
+    interfaces: [services, libraries]
+    configuration:
+      required: [trust-root, identity-policy]
+      authentication: OIDC identity for keyless signing; verification may be offline with a bundle.
+      secrets: [signing-key-when-key-based]
+    priority: FUTURE
+    tags: [advanced]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Trust model must be designed before enabling concrete clients.
+    health_check:
+      required: false
+      method: ecosystem
+    security_considerations:
+      - Pin and update trusted roots through an explicit policy.
+      - Identity and transparency-log inclusion must both be evaluated.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/sigstore/sigstore/releases/tag/v1.11.3
+    sources:
+      - https://github.com/sigstore/sigstore/releases/tag/v1.11.3
+      - https://docs.sigstore.dev/about/overview/
+
+  - id: cosign
+    name: Cosign
+    category: artifact-verification
+    official_source: https://github.com/sigstore/cosign
+    documentation: https://docs.sigstore.dev/cosign/
+    verified_version: v3.1.4
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/sigstore/cosign/blob/v3.1.4/LICENSE
+    installation:
+      method: container-image
+      locator: ghcr.io/sigstore/cosign/cosign:v3.1.4
+      pinned: true
+    capabilities: [OCI-signature-verification, attestation-verification, bundle-verification]
+    responsibility: Verify artifact signatures and attestations against an explicit identity/key policy.
+    boundary: Does not generate SBOMs, scan vulnerabilities, or establish SLSA level alone.
+    dependencies: [trusted-root, OCI-registry]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [OCI-artifact, Sigstore-bundle, DSSE-attestation]
+      output_formats: [JSON, verification-result]
+    interfaces: [CLI, Go-library]
+    configuration:
+      required: [artifact-digest, verification-policy]
+      authentication: Registry credentials for private artifacts; OIDC for keyless signing.
+      secrets: [registry-credentials, signing-key-when-key-based]
+    priority: FUTURE
+    tags: [advanced, sigstore]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Requires immutable artifact identity and policy storage.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Verify by digest and constrain certificate identity and issuer.
+      - Never treat signature presence alone as authorization.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/sigstore/cosign/releases/tag/v3.1.4
+    sources:
+      - https://github.com/sigstore/cosign/releases/tag/v3.1.4
+      - https://docs.sigstore.dev/cosign/verifying/verify/
+
+  - id: slsa
+    name: SLSA
+    category: assurance-framework
+    official_source: https://github.com/slsa-framework/slsa
+    documentation: https://slsa.dev/spec/v1.2/
+    verified_version: v1.2
+    version_status: framework
+    release_verified_at: 2026-11-08
+    license:
+      name: Community Specification License 1.0
+      spdx: Community-Spec-1.0
+      source: https://github.com/slsa-framework/slsa/blob/v1.2/LICENSE.md
+    installation:
+      method: specification
+      locator: https://slsa.dev/spec/v1.2/
+      pinned: true
+    capabilities: [supply-chain-assurance-model, build-track-requirements, provenance-model]
+    responsibility: Provide assurance terminology and requirements for build tracks and provenance.
+    boundary: Specification only; it does not scan, sign, or independently verify artifacts.
+    dependencies: [implementation-specific]
+    supported:
+      operating_systems: [not-applicable]
+      architectures: [not-applicable]
+      input_formats: [provenance-and-process-evidence]
+      output_formats: [conformance-assessment]
+    interfaces: [specification]
+    configuration:
+      required: [selected-SLSA-track-and-level]
+      authentication: Not applicable.
+      secrets: []
+    priority: FUTURE
+    tags: [advanced, framework]
+    enablement:
+      status: planned
+      current_integration: No automated conformance evaluator exists.
+      rationale: Policy and provenance models are prerequisites.
+    health_check:
+      required: false
+      method: not-applicable
+    security_considerations:
+      - Claims require evidence; labels must never be self-asserted without evaluation.
+      - Preserve specification version with every assessment.
+    maintenance:
+      status: framework
+      release_evidence: https://github.com/slsa-framework/slsa/releases/tag/v1.2
+    sources:
+      - https://github.com/slsa-framework/slsa/releases/tag/v1.2
+      - https://slsa.dev/spec/v1.2/
+
+  - id: in-toto
+    name: in-toto
+    category: provenance-verification
+    official_source: https://github.com/in-toto/in-toto
+    documentation: https://in-toto.io/
+    verified_version: v3.0.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/in-toto/in-toto/blob/v3.0.0/LICENSE
+    installation:
+      method: pip
+      locator: in-toto==3.0.0
+      pinned: true
+    capabilities: [layout-verification, link-metadata-verification, supply-chain-step-attestation]
+    responsibility: Verify that signed supply-chain step metadata satisfies an authorized layout.
+    boundary: Does not scan dependencies, CVEs, source code, or infrastructure.
+    dependencies: [Python, cryptographic-keys-or-identities]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [runtime-supported]
+      input_formats: [in-toto-layout, link-metadata, DSSE]
+      output_formats: [verification-result]
+    interfaces: [CLI, Python-library]
+    configuration:
+      required: [layout, trusted-functionary-keys]
+      authentication: Signature identities or keys are supplied by policy.
+      secrets: [signing-keys-for-creation-only]
+    priority: FUTURE
+    tags: [advanced]
+    enablement:
+      status: planned
+      current_integration: Not installed.
+      rationale: Requires provenance ingestion, trusted policy storage, and artifact identity.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Protect layout trust roots and enforce expiration/thresholds.
+      - Verification must bind materials and products to immutable identities.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/in-toto/in-toto/releases/tag/v3.0.0
+    sources:
+      - https://github.com/in-toto/in-toto/releases/tag/v3.0.0
+      - https://in-toto.readthedocs.io/en/latest/
+
+  - id: gitleaks
+    name: Gitleaks
+    category: secret-scanner
+    official_source: https://github.com/gitleaks/gitleaks
+    documentation: https://github.com/gitleaks/gitleaks
+    verified_version: v8.30.1
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: MIT License
+      spdx: MIT
+      source: https://github.com/gitleaks/gitleaks/blob/v8.30.1/LICENSE
+    installation:
+      method: container-image
+      locator: ghcr.io/gitleaks/gitleaks:v8.30.1
+      pinned: true
+    capabilities: [secret-detection, git-history-scanning, baseline-support]
+    responsibility: Detect credential-like material in Git content using secret rules.
+    boundary: Does not perform SAST, dependency analysis, or credential validity checks by default.
+    dependencies: [ruleset, Git-for-history-mode]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [amd64, arm64]
+      input_formats: [Git-repository, directory, stdin]
+      output_formats: [JSON, CSV, JUnit, SARIF, template]
+    interfaces: [CLI, GitHub-Action]
+    configuration:
+      required: [scan-source, ruleset]
+      authentication: Source-host credentials only when cloning private repositories.
+      secrets: [source-host-token]
+    priority: OPTIONAL
+    tags: [security-extension]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Distinct useful extension, but requires redaction and repository workflows.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Findings may contain live secrets and require strict redaction/access controls.
+      - Never place secret values in logs or generic finding fields.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1
+    sources:
+      - https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1
+      - https://github.com/gitleaks/gitleaks/blob/v8.30.1/README.md
+
+  - id: semgrep
+    name: Semgrep Community Edition
+    category: static-analysis
+    official_source: https://github.com/semgrep/semgrep
+    documentation: https://semgrep.dev/docs/
+    verified_version: v1.184.0
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: GNU Lesser General Public License 2.1
+      spdx: LGPL-2.1-or-later
+      source: https://github.com/semgrep/semgrep/blob/v1.184.0/LICENSE
+    installation:
+      method: pip
+      locator: semgrep==1.184.0
+      pinned: true
+    capabilities: [pattern-based-SAST, custom-rules, dataflow-analysis, SARIF-export]
+    responsibility: Analyze source code against explicitly selected static-analysis rules.
+    boundary: Does not provide dependency CVEs, secret validation, or artifact signatures.
+    dependencies: [ruleset, language-specific-analysis-support]
+    supported:
+      operating_systems: [Linux, macOS]
+      architectures: [amd64, arm64]
+      input_formats: [source-code, Semgrep-rules]
+      output_formats: [JSON, SARIF, JUnit, text]
+    interfaces: [CLI, CI-integrations]
+    configuration:
+      required: [ruleset, scan-source]
+      authentication: Registry/platform token only for hosted rules or platform features.
+      secrets: [Semgrep-token-when-hosted]
+    priority: OPTIONAL
+    tags: [security-extension]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Requires rule governance and source ingestion outside Prompt 01.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Pin trusted rules and separate local CE behavior from hosted capabilities.
+      - Source code and snippets in findings may be sensitive.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/semgrep/semgrep/releases/tag/v1.184.0
+    sources:
+      - https://github.com/semgrep/semgrep/releases/tag/v1.184.0
+      - https://semgrep.dev/docs/getting-started/
+
+  - id: bandit
+    name: Bandit
+    category: python-static-analysis
+    official_source: https://github.com/PyCQA/bandit
+    documentation: https://bandit.readthedocs.io/
+    verified_version: 1.9.4
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/PyCQA/bandit/blob/1.9.4/LICENSE
+    installation:
+      method: pip
+      locator: bandit==1.9.4
+      pinned: true
+    capabilities: [Python-AST-security-linting, plugin-tests, baseline-support]
+    responsibility: Identify Python-specific insecure coding patterns through Bandit tests.
+    boundary: Python-only static analysis; not dependency or infrastructure scanning.
+    dependencies: [Python]
+    supported:
+      operating_systems: [runtime-supported]
+      architectures: [runtime-supported]
+      input_formats: [Python-source]
+      output_formats: [JSON, CSV, HTML, SARIF, XML, text]
+    interfaces: [CLI, Python-library]
+    configuration:
+      required: [scan-source]
+      authentication: None.
+      secrets: []
+    priority: OPTIONAL
+    tags: [security-extension]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Add only with a source-analysis job type.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Preserve test IDs, confidence, and severity independently.
+      - Baselines must not silently suppress newly introduced paths.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/PyCQA/bandit/releases/tag/1.9.4
+    sources:
+      - https://github.com/PyCQA/bandit/releases/tag/1.9.4
+      - https://bandit.readthedocs.io/en/latest/
+
+  - id: checkov
+    name: Checkov
+    category: infrastructure-security-scanner
+    official_source: https://github.com/bridgecrewio/checkov
+    documentation: https://www.checkov.io/
+    verified_version: 3.4.3
+    version_status: verified
+    release_verified_at: 2026-11-08
+    license:
+      name: Apache License 2.0
+      spdx: Apache-2.0
+      source: https://github.com/bridgecrewio/checkov/blob/3.4.3/LICENSE
+    installation:
+      method: pip
+      locator: checkov==3.4.3
+      pinned: true
+    capabilities: [IaC-scanning, configuration-policy, graph-policies, SARIF-export]
+    responsibility: Evaluate infrastructure-as-code and supported configuration against Checkov policies.
+    boundary: Does not inspect runtime containers, application code semantics, or dependency CVEs.
+    dependencies: [Python, policy-definitions]
+    supported:
+      operating_systems: [Linux, macOS, Windows]
+      architectures: [runtime-supported]
+      input_formats: [Terraform, CloudFormation, Kubernetes, Helm, Dockerfile, CI-config]
+      output_formats: [JSON, SARIF, JUnit-XML, CSV, CLI]
+    interfaces: [CLI, Python-package]
+    configuration:
+      required: [framework, scan-source]
+      authentication: Platform token only for optional hosted features.
+      secrets: [platform-token-when-hosted]
+    priority: OPTIONAL
+    tags: [security-extension]
+    enablement:
+      status: disabled
+      current_integration: Not installed.
+      rationale: Requires a distinct IaC ingestion and policy lifecycle.
+    health_check:
+      required: false
+      method: CLI
+    security_considerations:
+      - Pin policy behavior and preserve check IDs and framework.
+      - IaC may contain secrets; apply the same redaction controls as source scanning.
+    maintenance:
+      status: active
+      release_evidence: https://github.com/bridgecrewio/checkov/releases/tag/3.4.3
+    sources:
+      - https://github.com/bridgecrewio/checkov/releases/tag/3.4.3
+      - https://www.checkov.io/1.Welcome/Quick%20Start.html
