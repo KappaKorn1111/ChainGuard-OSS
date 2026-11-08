@@ -24,6 +24,14 @@ in PostgreSQL, and optionally synchronizes BOMs to Dependency-Track.
 See [the architecture document](docs/architecture.md) for data flow, interfaces, and
 trust boundaries.
 
+The validated integration ecosystem is documented in:
+
+- [Open-source resource catalog](docs/resource-catalog.md)
+- [Integration and adapter matrix](docs/integration-matrix.md)
+- [Application and engine compatibility matrix](docs/compatibility-matrix.md)
+- [Machine-readable tool registry](config/tool-registry.yaml)
+- [Architecture decisions](docs/architecture-decisions/)
+
 ## Start the development stack
 
 Requirements: Docker Engine with Docker Compose v2, at least 10 GiB available memory,
@@ -55,8 +63,10 @@ Open:
 - API readiness (checks PostgreSQL and Redis): <http://localhost:8000/health/ready>
 - Dependency-Track UI: <http://localhost:8081>
 - Dependency-Track API: <http://localhost:8082>
+- Dependency-Track management health: <http://localhost:9001/health>
 
-On first boot, sign in to Dependency-Track, change the generated administrator password,
+On first boot, sign in to Dependency-Track with its documented bootstrap account,
+immediately replace the default administrator password,
 create an API key with BOM upload/project permissions, set
 `DEPENDENCY_TRACK_API_KEY` in `.env`, and recreate the worker:
 

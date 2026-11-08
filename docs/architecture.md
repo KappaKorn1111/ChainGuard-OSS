@@ -33,8 +33,9 @@ Celery task is dispatched. Scanner commands are argument arrays, never shell str
 7. Grype evaluates the Syft CycloneDX document against its real vulnerability database.
 8. The worker stores raw and normalized SBOMs, normalized findings and dependencies,
    tool versions, completion time, source hash, and SHA-256 hashes of all scanner output.
-9. If both Dependency-Track URL and API key are configured, the normalized BOM is
-   submitted to a per-job project and its project UUID is stored.
+9. If both Dependency-Track URL and API key are configured, the original CycloneDX BOM
+   is submitted to a per-job project and its project UUID is stored. Dependency-Track
+   v5 accepts CycloneDX uploads, not SPDX.
 
 Failures are explicit job states and retain a bounded diagnostic message. Scanner output
 is never synthesized.
@@ -90,8 +91,9 @@ and build the frontend with its externally reachable API URL.
 
 ## Known operational constraint
 
-Dependency-Track generates its initial administrator account on first boot. Its API key
-must be created through the Dependency-Track UI and then placed in the local `.env`.
+Dependency-Track v5 starts with a documented bootstrap administrator account whose
+default password must be changed immediately. An API key must then be created through
+the Dependency-Track UI and placed in the local `.env`.
 This cannot be safely automated without embedding or extracting bootstrap credentials.
 Until configured, ChainGuard scans and stores complete local results but intentionally
 skips BOM synchronization.

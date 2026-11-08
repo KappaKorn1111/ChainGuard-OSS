@@ -12,6 +12,7 @@ COPY backend/pyproject.toml backend/uv.lock ./backend/
 RUN cd backend && uv sync --frozen --no-dev
 
 COPY backend ./backend
+COPY config ./config
 RUN mkdir -p /data/uploads && chown -R chainguard:chainguard /app /data
 
 USER chainguard
