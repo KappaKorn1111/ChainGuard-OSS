@@ -1,0 +1,236 @@
+{
+  "$defs": {
+    "ToolProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Checksum"
+        },
+        "collection_timestamp": {
+          "format": "date-time",
+          "title": "Collection Timestamp",
+          "type": "string"
+        },
+        "original_data_source": {
+          "title": "Original Data Source",
+          "type": "string"
+        },
+        "original_record_id": {
+          "title": "Original Record Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "test_only": {
+          "default": false,
+          "title": "Test Only",
+          "type": "boolean"
+        },
+        "tool_identity": {
+          "title": "Tool Identity",
+          "type": "string"
+        },
+        "tool_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Version"
+        },
+        "transformation_history": {
+          "items": {
+            "$ref": "#/$defs/TransformationStep"
+          },
+          "title": "Transformation History",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "tool_identity",
+        "original_data_source",
+        "original_record_id",
+        "collection_timestamp"
+      ],
+      "title": "ToolProvenance",
+      "type": "object"
+    },
+    "TransformationStep": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "transformer": {
+          "title": "Transformer",
+          "type": "string"
+        },
+        "transformer_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transformer Version"
+        }
+      },
+      "required": [
+        "transformer",
+        "timestamp",
+        "operation"
+      ],
+      "title": "TransformationStep",
+      "type": "object"
+    },
+    "VerificationStatus": {
+      "enum": [
+        "unverified",
+        "verified",
+        "disputed",
+        "false-positive"
+      ],
+      "title": "VerificationStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "category": {
+      "title": "Category",
+      "type": "string"
+    },
+    "detected_at": {
+      "format": "date-time",
+      "title": "Detected At",
+      "type": "string"
+    },
+    "detection_source": {
+      "title": "Detection Source",
+      "type": "string"
+    },
+    "evidence": {
+      "additionalProperties": true,
+      "title": "Evidence",
+      "type": "object"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ToolProvenance"
+    },
+    "related_component_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Related Component Id"
+    },
+    "related_vulnerability_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Related Vulnerability Id"
+    },
+    "remediation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Remediation"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "severity": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Severity"
+    },
+    "tenant_id": {
+      "minLength": 1,
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "verification_status": {
+      "$ref": "#/$defs/VerificationStatus",
+      "default": "unverified"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "id",
+    "category",
+    "detection_source",
+    "evidence",
+    "detected_at",
+    "provenance"
+  ],
+  "title": "SecurityFinding",
+  "type": "object"
+}

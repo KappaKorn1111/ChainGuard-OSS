@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "TransformationStep": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "transformer": {
+          "title": "Transformer",
+          "type": "string"
+        },
+        "transformer_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transformer Version"
+        }
+      },
+      "required": [
+        "transformer",
+        "timestamp",
+        "operation"
+      ],
+      "title": "TransformationStep",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifact_checksum": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Artifact Checksum"
+    },
+    "collection_timestamp": {
+      "format": "date-time",
+      "title": "Collection Timestamp",
+      "type": "string"
+    },
+    "original_data_source": {
+      "title": "Original Data Source",
+      "type": "string"
+    },
+    "original_record_id": {
+      "title": "Original Record Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tenant_id": {
+      "minLength": 1,
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "test_only": {
+      "default": false,
+      "title": "Test Only",
+      "type": "boolean"
+    },
+    "tool_identity": {
+      "title": "Tool Identity",
+      "type": "string"
+    },
+    "tool_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tool Version"
+    },
+    "transformation_history": {
+      "items": {
+        "$ref": "#/$defs/TransformationStep"
+      },
+      "title": "Transformation History",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "tool_identity",
+    "original_data_source",
+    "original_record_id",
+    "collection_timestamp"
+  ],
+  "title": "ToolProvenance",
+  "type": "object"
+}

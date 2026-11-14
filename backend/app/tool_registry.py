@@ -130,6 +130,14 @@ class ToolRegistry(BaseModel):
                 return tool
         raise KeyError(tool_id)
 
+    def available_ids(self) -> frozenset[str]:
+        return frozenset(tool.id for tool in self.tools)
+
+    def enabled_entries(self) -> tuple[RegistryEntry, ...]:
+        return tuple(
+            tool for tool in self.tools if tool.enablement.status == EnablementStatus.enabled
+        )
+
 
 def load_tool_registry(path: Path | None = None) -> ToolRegistry:
     registry_path = path or Path(__file__).resolve().parents[2] / "config" / "tool-registry.yaml"
