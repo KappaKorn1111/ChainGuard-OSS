@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -179,8 +180,9 @@ def submit_dependency_track(cyclonedx_path: Path, job_id: str) -> str | None:
 
 @app.task(name="worker.tasks.inspect_job", bind=True, max_retries=2)
 def inspect_job(self, job_id: str) -> None:
+    database_job_id = uuid.UUID(job_id)
     with SessionLocal() as db:
-        job = db.scalar(select(InspectionJob).where(InspectionJob.id == job_id))
+        job = db.scalar(select(InspectionJob).where(InspectionJob.id == database_job_id))
         if job is None:
             logger.error("job_missing", extra={"job_id": job_id})
             return
@@ -240,7 +242,8 @@ def inspect_job(self, job_id: str) -> None:
                     "completed_at": datetime.now(UTC).isoformat(),
                 }
                 result = ScanResult(
-                    job_id=job_id,
+                    job_id=database_job_id,
+                    organization_id=job.organization_id,
                     raw_sbom=raw_sbom,
                     normalized_sbom=normalized_sbom,
                     raw_vulnerability_report=grype_report,
@@ -249,7 +252,9 @@ def inspect_job(self, job_id: str) -> None:
                     provenance=provenance,
                     dependency_track_project_uuid=project_uuid,
                 )
-                existing = db.scalar(select(ScanResult).where(ScanResult.job_id == job_id))
+                existing = db.scalar(
+                    select(ScanResult).where(ScanResult.job_id == database_job_id)
+                )
                 if existing:
                     db.delete(existing)
                     db.flush()
@@ -260,7 +265,7 @@ def inspect_job(self, job_id: str) -> None:
                 logger.info("job_completed", extra={"job_id": job_id})
         except Exception as exc:
             db.rollback()
-            job = db.scalar(select(InspectionJob).where(InspectionJob.id == job_id))
+            job = db.scalar(select(InspectionJob).where(InspectionJob.id == database_job_id))
             if job:
                 job.status = JobStatus.failed
                 job.error = str(exc)[:4000]

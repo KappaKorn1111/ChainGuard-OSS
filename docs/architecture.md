@@ -106,3 +106,26 @@ interfaces, versioned domain models and JSON Schemas, a catalog-backed runtime r
 secure process execution, evidence-preserving correlation, and a pluggable future scan
 pipeline. These modules are additive: the Prompt 01 worker path, database schema,
 Compose services, and API remain unchanged.
+
+## Persistent API, identity, and tenancy
+
+Prompt 04 adds the database-backed API described in [`api.md`](api.md). Users are global
+identities; organization memberships provide owner, admin, member, or viewer roles.
+Projects and all new security records carry indexed organization foreign keys, and API
+queries derive their tenant predicate from the validated access token.
+
+Argon2id protects passwords. Short-lived JWT access tokens pair with rotating refresh
+tokens whose SHA-256 hashes, family, expiry, use, replacement, and revocation state are
+stored in PostgreSQL. Redis enforces stricter authentication rate limits. Structured
+JSON errors and logs share a request/correlation ID.
+
+Migration `0002_tenant_backend` creates users, organizations, memberships, projects,
+repositories, SBOM artifacts, components, vulnerabilities, findings, policies,
+notifications, audit logs, per-organization integration settings, and refresh tokens.
+It evolves `inspection_jobs` and `scan_results` in place as documented in ADR 0007;
+the worker and original routes continue using those tables without evidence loss.
+
+Readiness now checks PostgreSQL, Redis, and the Alembic head. PostgreSQL tests run
+against a real server, including an upgrade/downgrade/upgrade evidence test. CI also
+creates an administrator through the API, restarts PostgreSQL and the API, and verifies
+that login still succeeds.

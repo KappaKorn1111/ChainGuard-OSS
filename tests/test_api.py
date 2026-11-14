@@ -1,35 +1,5 @@
-from collections.abc import Generator
-
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from backend.app.database import Base, get_db
-from backend.app.main import app
-
-
-@pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(engine)
-    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-
-    def override_db() -> Generator[Session, None, None]:
-        with session_factory() as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_db
-    monkeypatch.setattr("backend.app.main.dispatch_scan", lambda _: None)
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
-    Base.metadata.drop_all(engine)
 
 
 def test_liveness(client: TestClient) -> None:
@@ -51,7 +21,11 @@ def test_readiness_checks_database_and_redis(
     )
     response = client.get("/health/ready")
     assert response.status_code == 200
-    assert response.json()["checks"] == {"database": "ok", "redis": "ok"}
+    assert response.json()["checks"] == {
+        "database": "ok",
+        "redis": "ok",
+        "migration": "ok",
+    }
 
 
 def test_image_job_contract(client: TestClient) -> None:
