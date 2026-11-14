@@ -97,3 +97,12 @@ the Dependency-Track UI and placed in the local `.env`.
 This cannot be safely automated without embedding or extracting bootstrap credentials.
 Until configured, ChainGuard scans and stores complete local results but intentionally
 skips BOM synchronization.
+
+## Internal integration framework
+
+The contract-first orchestration layer is documented in
+[`integration-sdk.md`](integration-sdk.md) and ADR 0005. It adds typed integration
+interfaces, versioned domain models and JSON Schemas, a catalog-backed runtime registry,
+secure process execution, evidence-preserving correlation, and a pluggable future scan
+pipeline. These modules are additive: the Prompt 01 worker path, database schema,
+Compose services, and API remain unchanged.
