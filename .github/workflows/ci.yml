@@ -11,6 +11,37 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/chainguard_test
+      REDIS_URL: redis://127.0.0.1:6379/0
+      CELERY_BROKER_URL: memory://
+      CELERY_RESULT_BACKEND: cache+memory://
+      JWT_SECRET: test-ci-secret-with-at-least-thirty-two-characters
+      UPLOAD_DIR: /tmp/chainguard-test-uploads
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chainguard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d chainguard_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8.10.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -21,8 +52,81 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --project backend --frozen --dev
-      - run: uv run --project backend ruff check backend worker tests
+      - run: uv run --project backend alembic -c backend/alembic.ini upgrade head
+      - run: uv run --project backend alembic -c backend/alembic.ini check
+      - run: uv run --project backend ruff check backend worker tests scripts
       - run: uv run --project backend pytest tests
+
+  persistence:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/chainguard_test
+      REDIS_URL: redis://127.0.0.1:6379/0
+      CELERY_BROKER_URL: memory://
+      CELERY_RESULT_BACKEND: cache+memory://
+      JWT_SECRET: test-ci-secret-with-at-least-thirty-two-characters
+      UPLOAD_DIR: /tmp/chainguard-persistence-uploads
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chainguard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d chainguard_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8.10.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
+          enable-cache: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --project backend --frozen --dev
+      - run: uv run --project backend alembic -c backend/alembic.ini upgrade head
+      - name: Create data through API
+        run: |
+          uv run --project backend uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 > /tmp/chainguard-api.log 2>&1 &
+          echo $! > /tmp/chainguard-api.pid
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/health/live && break
+            sleep 1
+          done
+          uv run --project backend python scripts/persistence_probe.py create
+          kill "$(cat /tmp/chainguard-api.pid)"
+      - name: Restart PostgreSQL and API and verify persistence
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: |
+          docker restart "$POSTGRES_CONTAINER_ID"
+          until [ "$(docker inspect -f '{{.State.Health.Status}}' "$POSTGRES_CONTAINER_ID")" = "healthy" ]; do
+            sleep 1
+          done
+          uv run --project backend uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 > /tmp/chainguard-api-restarted.log 2>&1 &
+          echo $! > /tmp/chainguard-api.pid
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/health/ready && break
+            sleep 1
+          done
+          uv run --project backend python scripts/persistence_probe.py verify
+          kill "$(cat /tmp/chainguard-api.pid)"
 
   frontend:
     runs-on: ubuntu-latest

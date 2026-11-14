@@ -12,6 +12,8 @@ in PostgreSQL, and optionally synchronizes BOMs to Dependency-Track.
 - React, TypeScript, and Tailwind dashboard for jobs, findings, dependencies, SBOMs,
   provenance, and service status
 - FastAPI job and result API with bounded archive ingestion
+- Organization-scoped users, projects, RBAC, Argon2id passwords, rotating JWT refresh
+  tokens, audit logs, and Redis-backed rate limits
 - PostgreSQL persistence with reversible Alembic migrations
 - Celery worker and authenticated Redis broker/result backend
 - Real Syft, Grype, and Protobom-based `sbom-convert` binaries in the worker image
@@ -31,6 +33,7 @@ The validated integration ecosystem is documented in:
 - [Application and engine compatibility matrix](docs/compatibility-matrix.md)
 - [Machine-readable tool registry](config/tool-registry.yaml)
 - [Architecture decisions](docs/architecture-decisions/)
+- [API v1 documentation](docs/api.md)
 
 ## Start the development stack
 
@@ -41,7 +44,7 @@ and internet access for image pulls and Grype database updates.
 git clone https://github.com/KappaKorn1111/ChainGuard-OSS.git
 cd ChainGuard-OSS
 cp .env.example .env
-# Edit .env and replace every change-this-* development credential.
+# Edit .env and replace every example credential, including JWT_SECRET.
 
 docker compose build
 docker compose up -d postgres redis dtrack-postgres dependency-track-api
@@ -60,7 +63,7 @@ Open:
 - ChainGuard UI: <http://localhost:3000>
 - API documentation: <http://localhost:8000/docs>
 - API liveness: <http://localhost:8000/health/live>
-- API readiness (checks PostgreSQL and Redis): <http://localhost:8000/health/ready>
+- API readiness (checks PostgreSQL, Redis, and migration head): <http://localhost:8000/health/ready>
 - Dependency-Track UI: <http://localhost:8081>
 - Dependency-Track API: <http://localhost:8082>
 - Dependency-Track management health: <http://localhost:9001/health>
@@ -76,6 +79,24 @@ docker compose up -d --force-recreate worker
 
 Without that key, local inspection remains fully functional and BOM synchronization is
 explicitly skipped.
+
+## Bootstrap the API
+
+Only an empty database accepts bootstrap:
+
+```bash
+curl --fail --json '{
+  "email":"owner@example.com",
+  "password":"ReplaceWithAStrongPassword123",
+  "display_name":"Owner",
+  "organization_name":"Example",
+  "organization_slug":"example"
+}' http://localhost:8000/api/v1/auth/bootstrap
+```
+
+The response contains short-lived access and rotating refresh tokens. See
+[`docs/api.md`](docs/api.md) for login, refresh, logout, RBAC, user, organization,
+membership, and project endpoints.
 
 ## Submit an inspection
 
@@ -106,18 +127,31 @@ docker compose logs worker
 Host-side checks:
 
 ```bash
-cd backend
-uv sync --dev
-uv run ruff check .
-uv run pytest ../tests
+uv sync --project backend --frozen --dev
+uv run --project backend alembic -c backend/alembic.ini upgrade head
+uv run --project backend ruff check backend worker tests scripts
+uv run --project backend pytest tests
 
-cd ../frontend
+cd frontend
 npm ci
 npm run lint
 npm run build
 
 cd ..
 docker compose --env-file .env.example config --quiet
+```
+
+Backend tests require a real PostgreSQL database and never substitute SQLite. Set
+`DATABASE_URL`, `JWT_SECRET`, and `ENVIRONMENT=test` before running them outside
+Compose. The migration suite creates and drops a temporary database, so the configured
+PostgreSQL role needs `CREATEDB` in test environments.
+
+Apply or reverse the Prompt 04 migration explicitly:
+
+```bash
+uv run --project backend alembic -c backend/alembic.ini upgrade head
+uv run --project backend alembic -c backend/alembic.ini downgrade 0001
+uv run --project backend alembic -c backend/alembic.ini upgrade head
 ```
 
 ## Production settings
